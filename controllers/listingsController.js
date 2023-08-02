@@ -9,10 +9,23 @@ class ListingsController extends BaseController {
   /** if a method in this extended class AND the base class has the same name, the one in the extended class will run over the base method */
   // Create listing. Requires authentication.
   async insertOne(req, res) {
-    const { title, category, condition, price, description, shippingDetails } =
-      req.body;
+    const {
+      title,
+      category,
+      condition,
+      price,
+      description,
+      shippingDetails,
+      sellerEmail,
+    } = req.body;
+
     try {
-      // TODO: Get seller email from auth, query Users table for seller ID
+      // Get seller email from auth, query Users table for seller ID
+      const [seller] = await this.userModel.findOrCreate({
+        where: {
+          email: sellerEmail,
+        },
+      });
 
       // Create new listing
       const newListing = await this.model.create({
@@ -23,7 +36,8 @@ class ListingsController extends BaseController {
         description: description,
         shippingDetails: shippingDetails,
         buyerId: null,
-        sellerId: 1, // TODO: Replace with seller ID of authenticated seller
+        // we've defined seller var
+        sellerId: seller.id,
       });
 
       // Respond with new listing
@@ -47,11 +61,20 @@ class ListingsController extends BaseController {
   // Buy specific listing. Requires authentication.
   async buyItem(req, res) {
     const { listingId } = req.params;
+    const { buyerEmail } = req.body;
+
     try {
       const data = await this.model.findByPk(listingId);
 
-      // TODO: Get buyer email from auth, query Users table for buyer ID
-      await data.update({ BuyerId: 1 }); // TODO: Replace with buyer ID of authenticated buyer
+      // Get buyer email from auth, query Users table for buyer ID
+      const [buyer] = await this.userModel.findOrCreate({
+        where: {
+          email: buyerEmail,
+        },
+      });
+
+      // Replace with buyer ID of authenticated buyer
+      await data.update({ buyerId: buyer.id });
 
       // Respond to acknowledge update
       return res.json(data);
